@@ -31,5 +31,4 @@ jobs:
         name: Robot Controller App # optional, default is artifact
       # A file, directory or wildcard pattern that describes what to upload
         path: TeamCode/build/outputs/apk/debug/TeamCode-debug.apk
-      # The desired behavior if no files are found using the provided path.
-        error: APK not found!
+ 
