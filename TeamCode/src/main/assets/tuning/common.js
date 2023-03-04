@@ -1,5 +1,29 @@
 // TODO: time-interpolate data
 
+// https://en.wikipedia.org/wiki/Kahan_summation_algorithm#The_algorithm
+function kahanSum(xs) {
+  let sum = 0;
+  let c = 0;
+
+  for (let i = 0; i < xs.length; i++) {
+    const y = xs[i] - c;
+    const t = sum + y;
+    c = (t - sum) - y;
+    sum = t;
+  }
+
+  return sum;
+}
+
+// https://en.wikipedia.org/wiki/Simple_linear_regression#Simple_linear_regression_without_the_intercept_term_(single_regressor)
+function fitLinearNoIntercept(xs, ys) {
+  return kahanSum(
+    xs.map((x, i) => x * ys[i])
+  ) / kahanSum(
+    xs.map(x => x * x)
+  );
+}
+
 function fitLinearWithScaling(xs, ys) {
   const xOffset = xs.reduce((a, b) => a + b, 0) / xs.length;
   const yOffset = ys.reduce((a, b) => a + b, 0) / ys.length;
@@ -55,6 +79,26 @@ function fixVels(ts, xs, vs) {
   return numDerivOffline(ts, xs).map((est, i) => inverseOverflow(vs[i + 1], est));
 }
 
+// see https://github.com/FIRST-Tech-Challenge/FtcRobotController/issues/617
+function fixAngVels(vs) {
+  if (vs.length === 0) {
+    return [];
+  }
+
+  let offset = 0;
+  lastV = vs[0];
+  const vsFixed = [lastV];
+  for (let i = 1; i < vs.length; i++) {
+    if (Math.abs(vs[i] - lastV) > Math.PI) {
+      offset -= Math.sign(vs[i] - lastV) * 2 * Math.PI;
+    }
+    vsFixed.push(offset + vs[i]);
+    lastV = vs[i];
+  }
+
+  return vsFixed;
+}
+
 // data comes in pairs
 function newLinearRegressionChart(container, xs, ys, options, onChange) {
   if (xs.length !== ys.length) {
@@ -67,7 +111,11 @@ function newLinearRegressionChart(container, xs, ys, options, onChange) {
 
   let mask = xs.map(() => true);
 
-  const [m, b] = fitLinearWithScaling(xs, ys);
+  function fit(xs, ys) {
+    return options.noIntercept ? [fitLinearNoIntercept(xs, ys), 0] : fitLinearWithScaling(xs, ys);
+  }
+
+  const [m, b] = fit(xs, ys);
 
   if (onChange) onChange(m, b);
 
@@ -75,6 +123,7 @@ function newLinearRegressionChart(container, xs, ys, options, onChange) {
   const maxX = xs.reduce((a, b) => Math.max(a, b), 0);
 
   const chartDiv = document.createElement('div');
+  const width = Math.max(0, window.innerWidth - 50);
   Plotly.newPlot(chartDiv, [{
     type: 'scatter',
     mode: 'markers',
@@ -96,10 +145,11 @@ function newLinearRegressionChart(container, xs, ys, options, onChange) {
     dragmode: 'select',
     showlegend: false,
     hovermode: false,
-    width: 600,
+    width,
+    height: width * 9 / 16,
   }, {
-    // 'select2d' left
-    modeBarButtonsToRemove: ['zoom2d', 'pan2d', 'lasso2d', 'zoomIn2d', 'zoomOut2d', 'autoScale2d', 'resetScale2d'],
+    // 'select2d', 'zoom2d', 'pan2d', 'lasso2d', 'zoomIn2d', 'zoomOut2d', 'autoScale2d', 'resetScale2d' left
+    modeBarButtonsToRemove: [],
   });
 
   const results = document.createElement('p');
@@ -114,7 +164,7 @@ function newLinearRegressionChart(container, xs, ys, options, onChange) {
       mask.map(b => b ? color : colorLight)
     ], [0]);
 
-    const [m, b] = fitLinearWithScaling(
+    const [m, b] = fit(
       xs.filter((_, i) => mask[i]),
       ys.filter((_, i) => mask[i]),
     );
@@ -133,6 +183,10 @@ function newLinearRegressionChart(container, xs, ys, options, onChange) {
   let pendingSelection = null;
 
   chartDiv.on('plotly_selected', function(eventData) {
+    if (eventData === undefined) {
+      return;
+    }
+
     pendingSelection = eventData;
   });
 

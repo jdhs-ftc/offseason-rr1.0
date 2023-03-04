@@ -5,9 +5,7 @@ import androidx.annotation.NonNull;
 import com.acmerobotics.dashboard.canvas.Canvas;
 import com.acmerobotics.dashboard.config.Config;
 import com.acmerobotics.dashboard.telemetry.TelemetryPacket;
-import com.acmerobotics.roadrunner.AccelConstraint;
-import com.acmerobotics.roadrunner.Action;
-import com.acmerobotics.roadrunner.Actions;
+import com.acmerobotics.roadrunner.*;
 import com.acmerobotics.roadrunner.AngularVelConstraint;
 import com.acmerobotics.roadrunner.DualNum;
 import com.acmerobotics.roadrunner.HolonomicController;
@@ -36,6 +34,7 @@ import com.qualcomm.robotcore.hardware.HardwareMap;
 import com.qualcomm.robotcore.hardware.IMU;
 import com.qualcomm.robotcore.hardware.VoltageSensor;
 
+import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
 import org.firstinspires.ftc.teamcode.util.LogFiles;
 import org.firstinspires.ftc.teamcode.util.Encoder;
 import org.firstinspires.ftc.teamcode.util.Localizer;
@@ -43,6 +42,7 @@ import org.firstinspires.ftc.teamcode.util.LynxFirmwareVersion;
 import org.firstinspires.ftc.teamcode.util.OverflowEncoder;
 import org.firstinspires.ftc.teamcode.util.RawEncoder;
 
+import java.lang.Math;
 import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.List;
@@ -110,6 +110,7 @@ public final class MecanumDrive {
         public final Encoder leftFront, leftRear, rightRear, rightFront;
 
         private int lastLeftFrontPos, lastLeftRearPos, lastRightRearPos, lastRightFrontPos;
+        private Rotation2d lastHeading;
 
         public DriveLocalizer() {
             leftFront = new OverflowEncoder(new RawEncoder(MecanumDrive.this.leftFront));
@@ -121,6 +122,8 @@ public final class MecanumDrive {
             lastLeftRearPos = leftRear.getPositionAndVelocity().position;
             lastRightRearPos = rightRear.getPositionAndVelocity().position;
             lastRightFrontPos = rightFront.getPositionAndVelocity().position;
+
+            lastHeading = Rotation2d.exp(imu.getRobotYawPitchRollAngles().getYaw(AngleUnit.RADIANS));
         }
 
         @Override
@@ -130,31 +133,39 @@ public final class MecanumDrive {
             Encoder.PositionVelocityPair rightRearPosVel = rightRear.getPositionAndVelocity();
             Encoder.PositionVelocityPair rightFrontPosVel = rightFront.getPositionAndVelocity();
 
-            MecanumKinematics.WheelIncrements<Time> incrs = new MecanumKinematics.WheelIncrements<>(
+            Rotation2d heading = Rotation2d.exp(imu.getRobotYawPitchRollAngles().getYaw(AngleUnit.RADIANS));
+            double headingDelta = heading.minus(lastHeading);
+
+            Twist2dIncrDual<Time> twist = kinematics.forward(new MecanumKinematics.WheelIncrements<>(
                     new DualNum<Time>(new double[]{
-                            leftFrontPosVel.position - lastLeftFrontPos,
+                            (leftFrontPosVel.position - lastLeftFrontPos) + kinematics.trackWidth * headingDelta,
                             leftFrontPosVel.velocity,
                     }).times(inPerTick),
                     new DualNum<Time>(new double[]{
-                            leftRearPosVel.position - lastLeftRearPos,
+                            (leftRearPosVel.position - lastLeftRearPos) + kinematics.trackWidth * headingDelta,
                             leftRearPosVel.velocity,
                     }).times(inPerTick),
                     new DualNum<Time>(new double[]{
-                            rightRearPosVel.position - lastRightRearPos,
+                            (rightRearPosVel.position - lastRightRearPos) - kinematics.trackWidth * headingDelta,
                             rightRearPosVel.velocity,
                     }).times(inPerTick),
                     new DualNum<Time>(new double[]{
-                            rightFrontPosVel.position - lastRightFrontPos,
+                            (rightFrontPosVel.position - lastRightFrontPos) - kinematics.trackWidth * headingDelta,
                             rightFrontPosVel.velocity,
                     }).times(inPerTick)
-            );
+            ));
 
             lastLeftFrontPos = leftFrontPosVel.position;
             lastLeftRearPos = leftRearPosVel.position;
             lastRightRearPos = rightRearPosVel.position;
             lastRightFrontPos = rightFrontPosVel.position;
 
-            return kinematics.forward(incrs);
+            lastHeading = heading;
+
+            return new Twist2dIncrDual<>(
+                    twist.transIncr,
+                    twist.rotIncr.drop(1).addFront(headingDelta)
+            );
         }
     }
 
@@ -193,11 +204,17 @@ public final class MecanumDrive {
     }
 
     public void setDrivePowers(Twist2d powers) {
-        MecanumKinematics.WheelVelocities<Time> wheelVels = kinematics.inverse(Twist2dDual.constant(powers, 1));
-        leftFront.setPower(wheelVels.leftFront.get(0));
-        leftBack.setPower(wheelVels.leftBack.get(0));
-        rightBack.setPower(wheelVels.rightBack.get(0));
-        rightFront.setPower(wheelVels.rightFront.get(0));
+        MecanumKinematics.WheelVelocities<Time> wheelVels = new MecanumKinematics(1).inverse(Twist2dDual.constant(powers, 1));
+
+        double maxPowerMag = 1;
+        for (DualNum<Time> power : wheelVels.all()) {
+            maxPowerMag = Math.max(maxPowerMag, power.value());
+        }
+
+        leftFront.setPower(wheelVels.leftFront.get(0) / maxPowerMag);
+        leftBack.setPower(wheelVels.leftBack.get(0) / maxPowerMag);
+        rightBack.setPower(wheelVels.rightBack.get(0) / maxPowerMag);
+        rightFront.setPower(wheelVels.rightFront.get(0) / maxPowerMag);
     }
 
     public final class FollowTrajectoryAction implements Action {
