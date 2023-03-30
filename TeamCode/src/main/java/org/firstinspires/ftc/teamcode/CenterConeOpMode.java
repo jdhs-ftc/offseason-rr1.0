@@ -1,20 +1,24 @@
 package org.firstinspires.ftc.teamcode;
 
+import com.acmerobotics.dashboard.config.Config;
 import com.acmerobotics.roadrunner.Twist2d;
 import com.acmerobotics.roadrunner.Vector2d;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
+import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 
 import org.firstinspires.ftc.robotcore.external.hardware.camera.WebcamName;
-import org.firstinspires.ftc.teamcode.vision.ConeDetectorPipeline;
+import org.firstinspires.ftc.teamcode.vision.PoleChatGPTPipeline;
 import org.openftc.easyopencv.OpenCvCamera;
 import org.openftc.easyopencv.OpenCvCameraFactory;
 import org.openftc.easyopencv.OpenCvCameraRotation;
-
+@TeleOp
+@Config
 public class CenterConeOpMode extends LinearOpMode {
 
     private OpenCvCamera camera;
-    private final ConeDetectorPipeline pipeline = new ConeDetectorPipeline();
-    private final PIDFController pidController = new PIDFController(new PIDFController.PIDCoefficients(4, 0, 0)); // Tuned PID values
+    private final PoleChatGPTPipeline pipeline = new PoleChatGPTPipeline();
+    public static PIDFController.PIDCoefficients pidCoefficients = new PIDFController.PIDCoefficients(4, 0, 0);
+    public static PIDFController pidController = new PIDFController(pidCoefficients); // Tuned PID values
 
     @Override
     public void runOpMode() throws InterruptedException {
@@ -36,11 +40,13 @@ public class CenterConeOpMode extends LinearOpMode {
         // Run the robot code while the OpMode is active
         while (opModeIsActive()) {
 
+
+
             // Calculate the error between the target X-coordinate and the cone's X-coordinate
             // Target X-coordinate for center of the image
 
 
-            double error = targetX - pipeline.getCones().get(0).x;
+            double error = targetX - pipeline.getPoles().get(0).x;
 
             // Use the PID controller to calculate the output power for the motors
             double output = pidController.update(error);

@@ -23,4 +23,19 @@ public abstract class ActionOpMode extends LinearOpMode {
             dash.sendTelemetryPacket(p);
         }
     }
+    protected void runBlockingWithMotors(Action a) {
+        Canvas c = new Canvas();
+        a.preview(c);
+
+        boolean b = true;
+        while (b && !isStopRequested()) {
+            TelemetryPacket p = new TelemetryPacket();
+            p.fieldOverlay().getOperations().addAll(c.getOperations());
+
+            b = a.run(p);
+            motorControl.update();
+
+            dash.sendTelemetryPacket(p);
+        }
+    }
 }

@@ -378,6 +378,7 @@ public class TeleopFieldCentric extends LinearOpMode {
             //telemetry.addData("colorRed", color.red());
             telemetry.addData("servoPosition", claw.getPower());
             //telemetry.addData("poleWidth", poleDetectionPipeline.getMaxRect().width);
+            telemetry.addData("loopTime", 1/(timeDifference/1000));
             telemetry.update();
         }
     }

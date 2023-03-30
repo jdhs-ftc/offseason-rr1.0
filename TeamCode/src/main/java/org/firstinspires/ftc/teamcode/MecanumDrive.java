@@ -50,13 +50,13 @@ import java.util.List;
 @Config
 public final class MecanumDrive {
     // drive model parameters
-    public static double IN_PER_TICK = 0;
+    public static double IN_PER_TICK = 0.000549539;
     public static double LATERAL_IN_PER_TICK = 1;
-    public static double TRACK_WIDTH_TICKS = 0;
+    public static double TRACK_WIDTH_TICKS = 47521.88691104876;
 
     // feedforward parameters
-    public static double kS = 0;
-    public static double kV = 0;
+    public static double kS = 0.9812460433137571;
+    public static double kV = 0.00010208633414578305;
     public static double kA = 0;
 
     // path profile parameters

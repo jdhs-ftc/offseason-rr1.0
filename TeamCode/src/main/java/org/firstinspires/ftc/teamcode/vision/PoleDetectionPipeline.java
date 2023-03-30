@@ -43,6 +43,7 @@ public class PoleDetectionPipeline extends OpenCvPipeline {
     private Mat binaryMat      = new Mat();
     private Mat maskedInputMat = new Mat();
     public Rect maxRect = new Rect();
+    public
     MatOfPoint maxContour = new MatOfPoint();
 
     @Override
@@ -90,26 +91,25 @@ public class PoleDetectionPipeline extends OpenCvPipeline {
          * range (RGB 0, 0, 0. All discarded pixels will be black)
          */
         Core.bitwise_and(input, input, maskedInputMat, binaryMat);
-        Imgproc.GaussianBlur(maskedInputMat, maskedInputMat, new org.opencv.core.Size(5, 5), 0);
+        Imgproc.GaussianBlur(maskedInputMat, maskedInputMat, new org.opencv.core.Size(10, 10), 0);
 
         List<MatOfPoint> contours = new ArrayList<>();
         Mat hierarchy = new Mat();
         Imgproc.findContours(binaryMat, contours, hierarchy, Imgproc.RETR_TREE, Imgproc.CHAIN_APPROX_SIMPLE);
         Imgproc.drawContours(maskedInputMat, contours, -1, new Scalar(0, 255, 0), 3);
 
-        int maxWidth = 0;
+        int maxHeight = 0;
         maxRect = new Rect();
         for (MatOfPoint contour : contours) {
             Rect rect = Imgproc.boundingRect(contour);
-            if (rect.width > maxWidth) {
-                maxWidth = rect.width;
+            if (rect.height > maxHeight) {
+                maxHeight = rect.height;
                 maxRect = rect;
                 maxContour = contour;
             }
             contour.release();
         }
         Imgproc.rectangle(maskedInputMat, maxRect, new Scalar(255, 0, 0), 3);
-        //Imgproc.goodFeaturesToTrack(maskedInputMat, maxContour, 1, 0.01, 10);
         /*
          * The Mat returned from this method is the
          * one displayed on the viewport.
