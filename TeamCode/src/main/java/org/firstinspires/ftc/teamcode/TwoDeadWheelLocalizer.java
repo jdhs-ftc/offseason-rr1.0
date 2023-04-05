@@ -17,7 +17,7 @@ import org.firstinspires.ftc.teamcode.util.RawEncoder;
 
 @Config
 public final class TwoDeadWheelLocalizer implements Localizer {
-    public static double PAR_Y_TICKS = 0.0;
+    public static double PAR_Y_TICKS = -11282.2;
     public static double PERP_X_TICKS = 0.0;
 
     public final Encoder par, perp;

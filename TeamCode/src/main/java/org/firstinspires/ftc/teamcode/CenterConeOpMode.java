@@ -71,6 +71,7 @@ public class CenterConeOpMode extends LinearOpMode {
         camera.stopStreaming();
     }
 
+    @SuppressWarnings("AnonymousInnerClassWithTooManyMethods")
     private final OpenCvCamera.AsyncCameraOpenListener cameraListener = new OpenCvCamera.AsyncCameraOpenListener() {
         @Override
         public void onOpened() {

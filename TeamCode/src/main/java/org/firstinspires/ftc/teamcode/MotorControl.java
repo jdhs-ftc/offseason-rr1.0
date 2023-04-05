@@ -13,13 +13,16 @@ import org.firstinspires.ftc.robotcore.external.navigation.CurrentUnit;
 /**
  * This class is used to control the motor systems on the robot.
  */
-public class motorControl {
+public class MotorControl {
+    Claw claw;
+    Slide slide;
+    Arm arm;
 
     /**
      * Gets the current state of the arm and slide together.
      * @return the current state of the arm and slide system
      */
-    public static combinedMode getCurrentMode() {
+    public combinedMode getCurrentMode() {
         return currentMode;
     }
 
@@ -27,8 +30,8 @@ public class motorControl {
      * Sets the target state of the arm and slide together.
      * @param targetMode The new state to set the arm and slide to.
      */
-    public static void setCurrentMode(combinedMode targetMode) {
-        motorControl.currentMode = targetMode;
+    public void setCurrentMode(combinedMode targetMode) {
+        currentMode = targetMode;
     }
 
     /**
@@ -43,52 +46,45 @@ public class motorControl {
     /**
      * The current state of the arm and slide system.
      */
-    private static combinedMode currentMode;
-    private static combinedMode oldMode;
+    private combinedMode currentMode;
+    private combinedMode oldMode;
 
     /**
      * This initializes the arm and slide motors, and resets the mode to the default. This should be run before any other methods.
      * @param hardwareMap The hardware map to use to get the motors.
      */
-    public static void init(@NonNull HardwareMap hardwareMap) {
-        arm.init(hardwareMap);
-        slide.init(hardwareMap);
-        claw.init(hardwareMap);
+    public MotorControl(@NonNull HardwareMap hardwareMap) {
+        arm = new Arm(hardwareMap);
+        slide = new Slide(hardwareMap);
+        claw = new Claw(hardwareMap);
 
         setCurrentMode(combinedMode.BOTTOM);
     }
 
-    /**
-     * Sets the target state of the arm and slide together.
-     * @param newMode The new state to set the arm and slide to.
-     */
-    public static void setMode(combinedMode newMode) {
-        setCurrentMode(newMode);
-    }
 
 
     /**
      * This class updates the arm and slide motors to match the current state.
      */
-    public static void update() {
+    public void update() {
         if (getCurrentMode() != oldMode) {
         switch (getCurrentMode()) {
             case BOTTOM:
-                if (arm.mode != arm.armMode.DOWN) {
-                    arm.mode = arm.armMode.MOVING_DOWN;
+                if (arm.mode != armMode.DOWN) {
+                    arm.mode = armMode.MOVING_DOWN;
                     slide.targetPosition = 0;
                 }
 
                 break;
             case MIDDLE:
-                if (arm.mode != arm.armMode.UP) {
-                    arm.mode = arm.armMode.MOVING_UP;
+                if (arm.mode != armMode.UP) {
+                    arm.mode = armMode.MOVING_UP;
                 }
                 slide.targetPosition = 0;
                 break;
             case TOP:
-                if (arm.mode != arm.armMode.UP) {
-                    arm.mode = arm.armMode.MOVING_UP;
+                if (arm.mode != armMode.UP) {
+                    arm.mode = armMode.MOVING_UP;
                     slide.targetPosition = 1100;
                 }
 
@@ -100,18 +96,30 @@ public class motorControl {
         arm.armUpdate();
     }
 
+
+    public enum armMode {
+        UP,
+        MOVING_UP,
+        MOVING_DOWN,
+        DOWN
+    }
+
+    /**
+     * Reset all motors.
+     */
+    public void reset() {
+        arm.reset();
+        slide.reset();
+    }
+
     /**
      * This class controls the arm motor.
      */
-    public static class arm {
-        public static DcMotorEx motor;
-        static armMode mode;
+    public static class Arm {
+        public DcMotorEx motor;
+        armMode mode;
 
-        /**
-         * This initializes the arm motor. This should be run before any other methods.
-         * @param hardwareMap The hardware map to use to get the motors.
-         */
-        public static void init(@NonNull HardwareMap hardwareMap) {
+        public Arm(HardwareMap hardwareMap) {
             mode = armMode.DOWN;
             motor = hardwareMap.get(DcMotorEx.class, "arm");
             motor.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
@@ -121,25 +129,31 @@ public class motorControl {
         }
 
         /**
+         * This stops the arm, sets the state to down, and resets the encoder.
+         */
+        public void reset() {
+            motor.setPower(0);
+            mode = armMode.DOWN;
+            motor.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+            motor.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+        }
+
+
+
+        /**
          * This gets the current state of the arm control.
          * @return The current state of the arm motor.
          */
-        public static armMode getMode() {
+        public armMode getMode() {
             return mode;
         }
 
-        /**
-         * Manually override the power of the arm motor, if the state isn't precise enough for you.
-         * @param power The power to set the arm motor to.
-         */
-        public static void setPower(double power) {
-            motor.setPower(power);
-        }
 
         /**
          * This immediately stops the arm motor and sets the state to the destination.
          */
-        public static void armForceStop() {
+        @SuppressWarnings("unused")
+        public void armForceStop() {
             if (mode == armMode.MOVING_UP) {
                 mode = armMode.UP;
             } else if (mode == armMode.MOVING_DOWN) {
@@ -149,23 +163,15 @@ public class motorControl {
         }
 
         /**
-         * This updates the arm controller for a new target state.
-         *
-         * @param newMode The new state to set the arm motor to.
-         */
-        public static void setMode(armMode newMode) {
-            mode = newMode;
-        }
-
-        /**
          * This updates the arm motor to match the current state. This should be run in a loop.
          */
-        public static void armUpdate() {
+        public void armUpdate() {
             switch (mode) {
                 case UP:
                     motor.setPower(0);
                     break;
                 case DOWN:
+                    //noinspection DuplicateBranchesInSwitch
                     motor.setPower(0);
                     break;
                 case MOVING_UP:
@@ -188,32 +194,23 @@ public class motorControl {
             }
         }
 
-        /**
-         * These are the valid modes for the arm motor.
-         */
-        enum armMode {
-            UP,
-            MOVING_UP,
-            MOVING_DOWN,
-            DOWN
-        }
     }
 
     /**
      * This class controls the slide motor.
      */
-    public static class slide {
+    public static class Slide {
         /**
          * This manually accesses the motor for the slide.
          */
-        public static DcMotorEx motor;
-        static double targetPosition;
+        public DcMotorEx motor;
+        double targetPosition;
 
         /**
          * This initializes the slide motor. This should be run before any other methods.
          * @param hardwareMap The hardware map to use to get the motors.
          */
-        public static void init(@NonNull HardwareMap hardwareMap) {
+        public Slide(HardwareMap hardwareMap) {
             motor = hardwareMap.get(DcMotorEx.class, "slide");
             motor.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
             motor.setCurrentAlert(8, CurrentUnit.AMPS);
@@ -221,27 +218,21 @@ public class motorControl {
             
         }
 
-
         /**
-         * This gets the current goal of the slide control.
-         * @return The current goal position of the slide motor.
+         * This stops the slide, sets the state to down, sets the target to 0, and resets the encoder.
          */
-        public static double getTargetPosition() {
-            return targetPosition;
+        public void reset() {
+            motor.setPower(0);
+            targetPosition = 0;
+            motor.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+            motor.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
         }
 
-        /**
-         * This sets the goal of the slide control.
-         * @param newTarget The new goal position of the slide motor.
-         */
-        public static void setTargetPosition(double newTarget) {
-            targetPosition = newTarget;
-        }
 
         /**
          * This updates the slide motor to match the current state. This should be run in a loop.
          */
-        public static void update() {
+        public void update() {
             // overly complex slide code
             // obtain the encoder position and calculate the error
             double slideError = targetPosition - motor.getCurrentPosition();
@@ -264,14 +255,14 @@ public class motorControl {
     /**
      * This class controls the claw.
      */
-    public static class claw {
-        public static CRServo servo;
+    public static class Claw {
+        public CRServo servo;
 
         /**
          * This initializes the claw servo. This should be run before any other methods.
          * @param hardwareMap The hardware map to use to get the servo.
          */
-        public static void init(HardwareMap hardwareMap) {
+        public Claw(HardwareMap hardwareMap) {
             servo = hardwareMap.get(CRServo.class, "claw");
             servo.setPower(0.8);
         }
@@ -280,7 +271,7 @@ public class motorControl {
          * This opens or closes the claw.
          * @param power The power to set the claw servo to.
          */
-        public static void setPower(double power) {
+        public void setPower(double power) {
             servo.setPower(power);
         }
     }

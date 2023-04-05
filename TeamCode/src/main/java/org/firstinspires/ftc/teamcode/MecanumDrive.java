@@ -57,7 +57,7 @@ public final class MecanumDrive {
     // feedforward parameters
     public static double kS = 0.9812460433137571;
     public static double kV = 0.00010208633414578305;
-    public static double kA = 0;
+    public static double kA = 0.00001;
 
     // path profile parameters
     public static double MAX_WHEEL_VEL = 50;
@@ -194,9 +194,10 @@ public final class MecanumDrive {
 
         imu = hardwareMap.get(IMU.class, "imu");
         IMU.Parameters parameters = new IMU.Parameters(new RevHubOrientationOnRobot(
-                RevHubOrientationOnRobot.LogoFacingDirection.UP,
-                RevHubOrientationOnRobot.UsbFacingDirection.FORWARD));
+                RevHubOrientationOnRobot.LogoFacingDirection.BACKWARD,
+                RevHubOrientationOnRobot.UsbFacingDirection.LEFT));
         imu.initialize(parameters);
+
 
         voltageSensor = hardwareMap.voltageSensor.iterator().next();
 
