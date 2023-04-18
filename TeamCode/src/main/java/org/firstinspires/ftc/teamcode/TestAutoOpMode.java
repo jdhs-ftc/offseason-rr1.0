@@ -1,15 +1,14 @@
 package org.firstinspires.ftc.teamcode;
 
 
-import androidx.annotation.NonNull;
 
-import com.acmerobotics.dashboard.canvas.Canvas;
-import com.acmerobotics.dashboard.telemetry.TelemetryPacket;
+import static org.firstinspires.ftc.teamcode.MotorControl.combinedMode.*;
+import static org.firstinspires.ftc.teamcode.MotorControl.armMode.*;
+
 import com.acmerobotics.roadrunner.Action;
 import com.acmerobotics.roadrunner.Pose2d;
 import com.acmerobotics.roadrunner.Vector2d;
 import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
-
 @Autonomous(name = "TestAutoOpMode", group = "Test")
 public class TestAutoOpMode extends ActionOpMode {
     @Override
@@ -17,19 +16,15 @@ public class TestAutoOpMode extends ActionOpMode {
 
 
         MotorControl motorControl = new MotorControl(hardwareMap);
+        MotorControlActions motorControlActions = new MotorControlActions(motorControl);
         MecanumDrive drive = new MecanumDrive(hardwareMap, new Pose2d(0, 0, 0));
         Action traj = drive.actionBuilder(drive.pose)
-                .stopAndAdd(new Action() {
-                    @Override
-                    public boolean run(@NonNull TelemetryPacket telemetryPacket) {
-                        motorControl.setCurrentMode(MotorControl.combinedMode.BOTTOM);
-                        return true;
-                    }
-                    @Override
-                    public void preview(@NonNull Canvas canvas) {}
-                })
+                .stopAndAdd(motorControlActions.setCurrentMode(BOTTOM))
                 .splineTo(new Vector2d(30, 30), Math.PI / 2)
+                .stopAndAdd(motorControlActions.arm.setMode(UP))
                 .splineTo(new Vector2d(60, 0), Math.PI)
+                .stopAndAdd(motorControlActions.arm.setMode(DOWN))
+                .stopAndAdd(motorControlActions.waitUntilFinished())
                 .build();
 
 

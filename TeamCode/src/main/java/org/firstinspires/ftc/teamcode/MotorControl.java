@@ -3,6 +3,9 @@ package org.firstinspires.ftc.teamcode;
 
 import androidx.annotation.NonNull;
 
+import com.acmerobotics.dashboard.canvas.Canvas;
+import com.acmerobotics.dashboard.telemetry.TelemetryPacket;
+import com.acmerobotics.roadrunner.Action;
 import com.qualcomm.robotcore.hardware.CRServo;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
@@ -33,6 +36,7 @@ public class MotorControl {
     public void setCurrentMode(combinedMode targetMode) {
         currentMode = targetMode;
     }
+
 
     /**
      * These are the valid modes for the arm and slide system.
@@ -119,7 +123,7 @@ public class MotorControl {
         public DcMotorEx motor;
         armMode mode;
 
-        public Arm(HardwareMap hardwareMap) {
+        public Arm(@NonNull HardwareMap hardwareMap) {
             mode = armMode.DOWN;
             motor = hardwareMap.get(DcMotorEx.class, "arm");
             motor.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
@@ -194,6 +198,13 @@ public class MotorControl {
             }
         }
 
+        public void setMode(armMode newMode) {
+            mode = newMode;
+        }
+
+        public boolean isBusy() {
+            return mode == armMode.MOVING_DOWN || mode == armMode.MOVING_UP;
+        }
     }
 
     /**
@@ -249,6 +260,14 @@ public class MotorControl {
                 motor.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
 
             }
+        }
+
+        public void setPosition(double position) {
+            targetPosition = position;
+        }
+
+        public boolean isBusy() {
+            return motor.isBusy();
         }
     }
 

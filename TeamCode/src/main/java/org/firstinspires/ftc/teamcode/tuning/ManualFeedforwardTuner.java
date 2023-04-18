@@ -15,7 +15,7 @@ import org.firstinspires.ftc.robotcore.external.Telemetry;
 
 @Config
 public class ManualFeedforwardTuner extends LinearOpMode {
-    public static double DISTANCE = 32;
+    public static double DISTANCE = 48;
 
     enum Mode {
         DRIVER_MODE,

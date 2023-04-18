@@ -37,7 +37,8 @@ public class TeleopFieldCentric extends LinearOpMode {
         //  Initialization Period
 
         // Enable Performance Optimization
-        PhotonCore.enable();
+        //PhotonCore.enable();
+
         PhotonCore.CONTROL_HUB.setBulkCachingMode(LynxModule.BulkCachingMode.AUTO);
         PhotonCore.EXPANSION_HUB.setBulkCachingMode(LynxModule.BulkCachingMode.AUTO);
 
@@ -83,7 +84,7 @@ public class TeleopFieldCentric extends LinearOpMode {
                     -gamepad1.left_stick_x * speed
             );
             Pose2d poseEstimate = drive.pose;
-            double rotationAmount = input.angleCast().minus(poseEstimate.rot.plus(Math.toRadians(90.0)));
+            double rotationAmount = input.angleCast().real - poseEstimate.rot.real + Math.toRadians(90.0);
             input = new Vector2d(input.x * Math.cos(rotationAmount) - input.y * Math.sin(rotationAmount), input.x * Math.sin(rotationAmount) + input.y * Math.cos(rotationAmount));
 
             // Pass in the rotated input + right stick value for rotation
