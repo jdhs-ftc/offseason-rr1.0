@@ -56,11 +56,11 @@ public final class MecanumDrive {
 
     // feedforward parameters in tick units
     public static double kS = 0.9812460433137571;
-    public static double kV = 0.00010208633414578305; // 0.00010208633414578305 originally, multiplied by in-per-tick previously
-    public static double kA = 0.00001;
+    public static double kV = 0.185767223337712246; // 0.00010208633414578305 originally, multiplied by in-per-tick previously
+    public static double kA = 0.001;
 
     // path profile parameters
-    public static double MAX_WHEEL_VEL = 30;
+    public static double MAX_WHEEL_VEL = 50;
     public static double MIN_PROFILE_ACCEL = -30;
     public static double MAX_PROFILE_ACCEL = 50;
 
@@ -411,7 +411,7 @@ public final class MecanumDrive {
         c.strokePolyline(xPoints, yPoints);
     }
 
-    private static void drawRobot(Canvas c, Pose2d t) {
+    public static void drawRobot(Canvas c, Pose2d t) {
         final double ROBOT_RADIUS = 9;
 
         c.setStrokeWidth(1);

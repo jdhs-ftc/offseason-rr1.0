@@ -1,8 +1,12 @@
 package org.firstinspires.ftc.teamcode;
 
+import static org.firstinspires.ftc.teamcode.MecanumDrive.*;
+import static org.firstinspires.ftc.teamcode.MecanumDrive.IN_PER_TICK;
+
 import com.acmerobotics.dashboard.FtcDashboard;
 import com.acmerobotics.dashboard.config.Config;
 import com.acmerobotics.dashboard.telemetry.MultipleTelemetry;
+import com.acmerobotics.dashboard.telemetry.TelemetryPacket;
 import com.acmerobotics.roadrunner.Pose2d;
 import com.acmerobotics.roadrunner.Twist2d;
 import com.acmerobotics.roadrunner.Vector2d;
@@ -26,7 +30,7 @@ import org.firstinspires.ftc.robotcore.external.navigation.CurrentUnit;
 public class TeleopFieldCentric extends LinearOpMode {
 
     // Declare a PIDF Controller to regulate heading
-    private final PIDFController.PIDCoefficients HEADING_PID = new PIDFController.PIDCoefficients(4.0, 0.0, 0.0);
+    private final PIDFController.PIDCoefficients HEADING_PID = new PIDFController.PIDCoefficients(0.5, 0.0, 0.0);
     private final PIDFController headingController = new PIDFController(HEADING_PID);
     double speed;
 
@@ -52,7 +56,9 @@ public class TeleopFieldCentric extends LinearOpMode {
 
         // Telemetry Init
         telemetry.setMsTransmissionInterval(50);
-        telemetry = new MultipleTelemetry(telemetry, FtcDashboard.getInstance().getTelemetry());
+        //telemetry = new MultipleTelemetry(telemetry, FtcDashboard.getInstance().getTelemetry());
+
+
 
         waitForStart();
 
@@ -84,7 +90,9 @@ public class TeleopFieldCentric extends LinearOpMode {
                     -gamepad1.left_stick_x * speed
             );
             Pose2d poseEstimate = drive.pose;
-            double rotationAmount = input.angleCast().real - poseEstimate.rot.real + Math.toRadians(90.0);
+            //double rotationAmount = input.angleCast().real - poseEstimate.rot.real + Math.toRadians(90.0);
+            double rotationAmount = -poseEstimate.rot.real + Math.toRadians(90.0);
+
             input = new Vector2d(input.x * Math.cos(rotationAmount) - input.y * Math.sin(rotationAmount), input.x * Math.sin(rotationAmount) + input.y * Math.cos(rotationAmount));
 
             // Pass in the rotated input + right stick value for rotation
@@ -105,14 +113,14 @@ public class TeleopFieldCentric extends LinearOpMode {
                 // Set the target heading for the heading controller to our desired angle
 
 
-                headingController.targetPosition = controllerHeading.angleCast().log() + Math.toRadians(90.0);
+                headingController.targetPosition = controllerHeading.angleCast().log() + Math.toRadians(180);
 
 
                 // Set desired angular velocity to the heading controller output + angular
                 // velocity feedforward
                 double headingInput = (headingController.update(poseEstimate.rot.log())
-                        * MecanumDrive.kV)
-                        * MecanumDrive.TRACK_WIDTH_TICKS;
+                        * kV
+                        * TRACK_WIDTH_TICKS * IN_PER_TICK);
                 drive.setDrivePowers(
                         new Twist2d(
                                 new Vector2d(
@@ -130,8 +138,8 @@ public class TeleopFieldCentric extends LinearOpMode {
                 // Set desired angular velocity to the heading controller output + angular
                 // velocity feedforward
                 double headingInput = (headingController.update(poseEstimate.rot.log())
-                        * MecanumDrive.kV)
-                        * MecanumDrive.TRACK_WIDTH_TICKS;
+                        * kV)
+                        * TRACK_WIDTH_TICKS;
                 drive.setDrivePowers(
                         new Twist2d(
                                 new Vector2d(
@@ -176,7 +184,13 @@ public class TeleopFieldCentric extends LinearOpMode {
             drive.updatePoseEstimateAndGetActualVel(); // this is technically private but the person who made rr says its the right way so /shrug
             // Timing
             // measure difference between current time and previous time
-            double timeDifference = (System.nanoTime() - prevTime) / 1000.0;
+            double timeDifference = (System.nanoTime() - prevTime) / 1000000.0;
+
+            TelemetryPacket packet = new TelemetryPacket();
+            MecanumDrive.drawRobot(packet.fieldOverlay(), drive.pose); //new Pose2d(new Vector2d(IN_PER_TICK * drive.pose.trans.x,IN_PER_TICK * drive.pose.trans.y), drive.pose.rot)
+            packet.put("slideTargetPosition", motorControl.slide.targetPosition);
+            packet.put("slidePosition", motorControl.slide.motor.getCurrentPosition());
+            FtcDashboard.getInstance().sendTelemetryPacket(packet);
 
             // Print pose to telemetry
             telemetry.addData("x", poseEstimate.trans.x);
@@ -189,7 +203,8 @@ public class TeleopFieldCentric extends LinearOpMode {
             telemetry.addData("controllerHeading", controllerHeading.angleCast().log());
             telemetry.addData("Arm Mode", motorControl.arm.getMode());
             telemetry.addData("servoPosition", motorControl.claw.servo.getPower());
-            telemetry.addData("loopTime", 1/(timeDifference/1000));
+            telemetry.addData("loopTimeMs", timeDifference);
+            telemetry.addData("loopTimeHz", 1000.0 / timeDifference);
             telemetry.update();
         }
     }

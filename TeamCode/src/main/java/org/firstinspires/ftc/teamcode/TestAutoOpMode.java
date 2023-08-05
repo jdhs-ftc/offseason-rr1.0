@@ -6,9 +6,11 @@ import static org.firstinspires.ftc.teamcode.MotorControl.combinedMode.*;
 import static org.firstinspires.ftc.teamcode.MotorControl.armMode.*;
 
 import com.acmerobotics.roadrunner.Action;
+import com.acmerobotics.roadrunner.ParallelAction;
 import com.acmerobotics.roadrunner.Pose2d;
 import com.acmerobotics.roadrunner.Vector2d;
 import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
+import org.firstinspires.ftc.teamcode.MotorControlActions.*;
 @Autonomous(name = "TestAutoOpMode", group = "Test")
 public class TestAutoOpMode extends ActionOpMode {
     @Override
@@ -18,11 +20,12 @@ public class TestAutoOpMode extends ActionOpMode {
         MotorControl motorControl = new MotorControl(hardwareMap);
         MotorControlActions motorControlActions = new MotorControlActions(motorControl);
         MecanumDrive drive = new MecanumDrive(hardwareMap, new Pose2d(0, 0, 0));
-        Action traj = drive.actionBuilder(drive.pose)
+        Action traj =
+                drive.actionBuilder(drive.pose)
                 .stopAndAdd(motorControlActions.setCurrentMode(BOTTOM))
-                .splineTo(new Vector2d(30, 30), Math.PI / 2)
+                .splineTo(new Vector2d(0, 30), Math.PI / 2)
                 .stopAndAdd(motorControlActions.arm.setMode(UP))
-                .splineTo(new Vector2d(60, 0), Math.PI)
+                .splineTo(new Vector2d(0, 60), Math.PI)
                 .stopAndAdd(motorControlActions.arm.setMode(DOWN))
                 .stopAndAdd(motorControlActions.waitUntilFinished())
                 .build();
@@ -32,9 +35,14 @@ public class TestAutoOpMode extends ActionOpMode {
 
         if (isStopRequested()) return;
 
-        runBlockingWithMotors(traj, motorControl);
+        runBlocking(new RaceParallelCommand(
+                traj,
+                motorControlActions.update()
+        ));
+
 
 
         PoseStorage.currentPose = drive.pose;
     }
+
 }

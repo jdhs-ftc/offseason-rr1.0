@@ -5,7 +5,6 @@ import androidx.annotation.NonNull;
 import com.acmerobotics.dashboard.canvas.Canvas;
 import com.acmerobotics.dashboard.telemetry.TelemetryPacket;
 import com.acmerobotics.roadrunner.Action;
-import com.qualcomm.robotcore.hardware.DcMotor;
 
 public class MotorControlActions {
     private final MotorControl motorControl;
@@ -17,6 +16,30 @@ public class MotorControlActions {
         this.slide = new Slide();
         this.arm = new Arm();
     }
+
+    public static class RaceParallelCommand implements Action {
+        private final Action[] actions;
+
+        public RaceParallelCommand(Action... actions) {
+            this.actions = actions;
+        }
+
+        @Override
+        public boolean run(@NonNull TelemetryPacket t) {
+            boolean finished = true;
+            for (Action action : actions) finished = finished & action.run(t);
+            return finished;
+        }
+
+        @Override
+        public void preview(@NonNull Canvas canvas) {
+            for (Action action : actions) action.preview(canvas);
+        }
+
+
+    }
+
+
 
     public Action setCurrentMode(MotorControl.combinedMode newMode) {
         return new Action() {
@@ -51,7 +74,22 @@ public class MotorControlActions {
         return new Action() {
             @Override
             public boolean run(@NonNull TelemetryPacket t) {
-                return !(motorControl.arm.isBusy() || motorControl.slide.isBusy());
+                return motorControl.arm.isBusy() || motorControl.slide.isBusy();
+            }
+
+            @Override
+            public void preview(@NonNull Canvas canvas) {
+
+            }
+        };
+    }
+
+    public Action update() {
+        return new Action() {
+            @Override
+            public boolean run(@NonNull TelemetryPacket t) {
+                motorControl.update();
+                return true;
             }
 
             @Override
@@ -96,7 +134,7 @@ public class MotorControlActions {
             return new Action() {
                 @Override
                 public boolean run(@NonNull TelemetryPacket t) {
-                    return !motorControl.arm.isBusy();
+                    return motorControl.arm.isBusy();
                 }
 
                 @Override
@@ -140,7 +178,7 @@ public class MotorControlActions {
             return new Action() {
                 @Override
                 public boolean run(@NonNull TelemetryPacket t) {
-                    return !motorControl.slide.isBusy();
+                    return motorControl.slide.isBusy();
                 }
 
                 @Override
