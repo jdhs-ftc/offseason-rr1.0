@@ -20,9 +20,7 @@ import com.acmerobotics.roadrunner.TimeTrajectory;
 import com.acmerobotics.roadrunner.TimeTurn;
 import com.acmerobotics.roadrunner.TrajectoryActionBuilder;
 import com.acmerobotics.roadrunner.TurnConstraints;
-import com.acmerobotics.roadrunner.Twist2d;
 import com.acmerobotics.roadrunner.Twist2dDual;
-import com.acmerobotics.roadrunner.Twist2dIncrDual;
 import com.acmerobotics.roadrunner.Vector2d;
 import com.acmerobotics.roadrunner.VelConstraint;
 import com.qualcomm.hardware.lynx.LynxModule;
@@ -53,6 +51,7 @@ public final class MecanumDrive {
     public static double IN_PER_TICK = 0.000549539;
     public static double LATERAL_IN_PER_TICK = 1;
     public static double TRACK_WIDTH_TICKS = 47521.88691104876;
+    public static double LATERAL_MULTIPLIER = IN_PER_TICK / LATERAL_IN_PER_TICK;
 
     // feedforward parameters in tick units
     public static double kS = 0.9812460433137571;
@@ -78,8 +77,7 @@ public final class MecanumDrive {
     public static double HEADING_VEL_GAIN = 0.0; // shared with turn
 
     public final MecanumKinematics kinematics = new MecanumKinematics(
-            IN_PER_TICK * TRACK_WIDTH_TICKS,
-            IN_PER_TICK / LATERAL_IN_PER_TICK);
+            IN_PER_TICK * TRACK_WIDTH_TICKS, LATERAL_MULTIPLIER);
 
     public final MotorFeedforward feedforward = new MotorFeedforward(kS, kV / IN_PER_TICK, kA / IN_PER_TICK);
 
@@ -127,7 +125,7 @@ public final class MecanumDrive {
         }
 
         @Override
-        public Twist2dIncrDual<Time> updateAndGetIncr() {
+        public Twist2dDual<Time> update() {
             Encoder.PositionVelocityPair leftFrontPosVel = leftFront.getPositionAndVelocity();
             Encoder.PositionVelocityPair leftRearPosVel = leftRear.getPositionAndVelocity();
             Encoder.PositionVelocityPair rightRearPosVel = rightRear.getPositionAndVelocity();
@@ -136,7 +134,7 @@ public final class MecanumDrive {
             Rotation2d heading = Rotation2d.exp(imu.getRobotYawPitchRollAngles().getYaw(AngleUnit.RADIANS));
             double headingDelta = heading.minus(lastHeading);
 
-            Twist2dIncrDual<Time> twist = kinematics.forward(new MecanumKinematics.WheelIncrements<>(
+            Twist2dDual<Time> twist = kinematics.forward(new MecanumKinematics.WheelIncrements<>(
                     new DualNum<Time>(new double[]{
                             (leftFrontPosVel.position - lastLeftFrontPos) + kinematics.trackWidth * headingDelta,
                             leftFrontPosVel.velocity,
@@ -162,9 +160,9 @@ public final class MecanumDrive {
 
             lastHeading = heading;
 
-            return new Twist2dIncrDual<>(
-                    twist.transIncr,
-                    twist.rotIncr.drop(1).addFront(headingDelta)
+            return new Twist2dDual<>(
+                    twist.line,
+                    DualNum.cons(headingDelta, twist.angle.drop(1))
             );
         }
     }
@@ -204,8 +202,9 @@ public final class MecanumDrive {
         localizer = new DriveLocalizer();
     }
 
-    public void setDrivePowers(Twist2d powers) {
-        MecanumKinematics.WheelVelocities<Time> wheelVels = new MecanumKinematics(1).inverse(Twist2dDual.constant(powers, 1));
+    public void setDrivePowers(PoseVelocity2d powers) {
+        MecanumKinematics.WheelVelocities<Time> wheelVels = new MecanumKinematics(1).inverse(
+                PoseVelocity2dDual.constant(powers, 1));
 
         double maxPowerMag = 1;
         for (DualNum<Time> power : wheelVels.all()) {
@@ -234,8 +233,8 @@ public final class MecanumDrive {
             yPoints = new double[disps.size()];
             for (int i = 0; i < disps.size(); i++) {
                 Pose2d p = t.path.get(disps.get(i), 1).value();
-                xPoints[i] = p.trans.x;
-                yPoints[i] = p.trans.y;
+                xPoints[i] = p.position.x;
+                yPoints[i] = p.position.y;
             }
         }
 
@@ -260,9 +259,9 @@ public final class MecanumDrive {
 
             Pose2dDual<Time> txWorldTarget = timeTrajectory.get(t);
 
-            Twist2d robotVelRobot = updatePoseEstimateAndGetActualVel();
+            PoseVelocity2d robotVelRobot = updatePoseEstimate();
 
-            Twist2dDual<Time> command = new HolonomicController(
+            PoseVelocity2dDual<Time> command = new HolonomicController(
                     AXIAL_GAIN, LATERAL_GAIN, HEADING_GAIN,
                     AXIAL_VEL_GAIN, LATERAL_VEL_GAIN, HEADING_VEL_GAIN
             )
@@ -277,14 +276,14 @@ public final class MecanumDrive {
 
             LogFiles.recordTargetPose(txWorldTarget.value());
 
-            p.put("x", pose.trans.x);
-            p.put("y", pose.trans.y);
-            p.put("heading (deg)", Math.toDegrees(pose.rot.log()));
+            p.put("x", pose.position.x);
+            p.put("y", pose.position.y);
+            p.put("heading (deg)", Math.toDegrees(pose.heading.log()));
 
             Pose2d error = txWorldTarget.value().minusExp(pose);
-            p.put("xError", error.trans.x);
-            p.put("yError", error.trans.y);
-            p.put("headingError (deg)", Math.toDegrees(error.rot.log()));
+            p.put("xError", error.position.x);
+            p.put("yError", error.position.y);
+            p.put("headingError (deg)", Math.toDegrees(error.heading.log()));
 
             // only draw when active; only one drive action should be active at a time
             Canvas c = p.fieldOverlay();
@@ -341,9 +340,9 @@ public final class MecanumDrive {
 
             Pose2dDual<Time> txWorldTarget = turn.get(t);
 
-            Twist2d robotVelRobot = updatePoseEstimateAndGetActualVel();
+            PoseVelocity2d robotVelRobot = updatePoseEstimate();
 
-            Twist2dDual<Time> command = new HolonomicController(
+            PoseVelocity2dDual<Time> command = new HolonomicController(
                     AXIAL_GAIN, LATERAL_GAIN, HEADING_GAIN,
                     AXIAL_VEL_GAIN, LATERAL_VEL_GAIN, HEADING_VEL_GAIN
             )
@@ -368,7 +367,7 @@ public final class MecanumDrive {
             drawRobot(c, pose);
 
             c.setStroke("#7C4DFFFF");
-            c.fillCircle(turn.beginPose.trans.x, turn.beginPose.trans.y, 2);
+            c.fillCircle(turn.beginPose.position.x, turn.beginPose.position.y, 2);
 
             return true;
         }
@@ -376,13 +375,13 @@ public final class MecanumDrive {
         @Override
         public void preview(Canvas c) {
             c.setStroke("#7C4DFF7A");
-            c.fillCircle(turn.beginPose.trans.x, turn.beginPose.trans.y, 2);
+            c.fillCircle(turn.beginPose.position.x, turn.beginPose.position.y, 2);
         }
     }
 
-    public Twist2d updatePoseEstimateAndGetActualVel() {
-        Twist2dIncrDual<Time> incr = localizer.updateAndGetIncr();
-        pose = pose.plus(incr.value());
+    public PoseVelocity2d updatePoseEstimate() {
+        Twist2dDual<Time> twist = localizer.update();
+        pose = pose.plus(twist.value());
 
         poseHistory.add(pose);
         while (poseHistory.size() > 100) {
@@ -391,7 +390,7 @@ public final class MecanumDrive {
 
         LogFiles.recordPose(pose);
 
-        return incr.velocity().value();
+        return twist.velocity().value();
     }
 
     private void drawPoseHistory(Canvas c) {
@@ -400,8 +399,8 @@ public final class MecanumDrive {
 
         int i = 0;
         for (Pose2d t : poseHistory) {
-            xPoints[i] = t.trans.x;
-            yPoints[i] = t.trans.y;
+            xPoints[i] = t.position.x;
+            yPoints[i] = t.position.y;
 
             i++;
         }
@@ -415,10 +414,10 @@ public final class MecanumDrive {
         final double ROBOT_RADIUS = 9;
 
         c.setStrokeWidth(1);
-        c.strokeCircle(t.trans.x, t.trans.y, ROBOT_RADIUS);
+        c.strokeCircle(t.position.x, t.position.y, ROBOT_RADIUS);
 
-        Vector2d halfv = t.rot.vec().times(0.5 * ROBOT_RADIUS);
-        Vector2d p1 = t.trans.plus(halfv);
+        Vector2d halfv = t.heading.vec().times(0.5 * ROBOT_RADIUS);
+        Vector2d p1 = t.position.plus(halfv);
         Vector2d p2 = p1.plus(halfv);
         c.strokeLine(p1.x, p1.y, p2.x, p2.y);
     }
@@ -427,10 +426,10 @@ public final class MecanumDrive {
         return new TrajectoryActionBuilder(
                 TurnAction::new,
                 FollowTrajectoryAction::new,
-                beginPose, 1e-6,
+                beginPose, 1e-6, 0.0,
                 defaultTurnConstraints,
                 defaultVelConstraint, defaultAccelConstraint,
-                0.25
+                0.25, 0.1
         );
     }
 }
