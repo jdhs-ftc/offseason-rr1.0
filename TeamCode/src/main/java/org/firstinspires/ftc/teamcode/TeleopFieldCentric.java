@@ -3,17 +3,20 @@ package org.firstinspires.ftc.teamcode;
 import static org.firstinspires.ftc.teamcode.MecanumDrive.*;
 import static org.firstinspires.ftc.teamcode.MecanumDrive.IN_PER_TICK;
 
+import android.provider.ContactsContract;
+
 import com.acmerobotics.dashboard.FtcDashboard;
 import com.acmerobotics.dashboard.config.Config;
 import com.acmerobotics.dashboard.telemetry.MultipleTelemetry;
 import com.acmerobotics.dashboard.telemetry.TelemetryPacket;
 import com.acmerobotics.roadrunner.Pose2d;
-import com.acmerobotics.roadrunner.Twist2d;
+import com.acmerobotics.roadrunner.PoseVelocity2d;
 import com.acmerobotics.roadrunner.Vector2d;
 import com.outoftheboxrobotics.photoncore.PhotonCore;
 import com.qualcomm.hardware.lynx.LynxModule;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
+import com.qualcomm.robotcore.hardware.Gamepad;
 
 import org.firstinspires.ftc.robotcore.external.navigation.CurrentUnit;
 
@@ -47,6 +50,8 @@ public class TeleopFieldCentric extends LinearOpMode {
         PhotonCore.EXPANSION_HUB.setBulkCachingMode(LynxModule.BulkCachingMode.AUTO);
 
 
+
+
         // RoadRunner Init
         MecanumDrive drive = new MecanumDrive(hardwareMap, PoseStorage.currentPose);
         headingController.setInputBounds(-Math.PI, Math.PI);
@@ -57,8 +62,6 @@ public class TeleopFieldCentric extends LinearOpMode {
         // Telemetry Init
         telemetry.setMsTransmissionInterval(50);
         //telemetry = new MultipleTelemetry(telemetry, FtcDashboard.getInstance().getTelemetry());
-
-
 
         waitForStart();
 
@@ -80,7 +83,7 @@ public class TeleopFieldCentric extends LinearOpMode {
             }
 
             if (gamepad1.dpad_down && gamepad1.dpad_left && gamepad1.dpad_up && gamepad1.dpad_right) {
-                drive.pose = new Pose2d(drive.pose.trans.x, drive.pose.trans.y, Math.toRadians(90.0));
+                drive.pose = new Pose2d(drive.pose.position.x, drive.pose.position.y, Math.toRadians(90.0));
             }
 
             // Create a vector from the gamepad x/y inputs
@@ -91,7 +94,7 @@ public class TeleopFieldCentric extends LinearOpMode {
             );
             Pose2d poseEstimate = drive.pose;
             //double rotationAmount = input.angleCast().real - poseEstimate.rot.real + Math.toRadians(90.0);
-            double rotationAmount = -poseEstimate.rot.real + Math.toRadians(90.0);
+            double rotationAmount = -poseEstimate.heading.real + Math.toRadians(90.0);
 
             input = new Vector2d(input.x * Math.cos(rotationAmount) - input.y * Math.sin(rotationAmount), input.x * Math.sin(rotationAmount) + input.y * Math.cos(rotationAmount));
 
@@ -101,7 +104,7 @@ public class TeleopFieldCentric extends LinearOpMode {
 
             if (controllerHeading.minus(new Vector2d(0.0,0.0)).norm() < 0.7) {
                 drive.setDrivePowers(
-                        new Twist2d(
+                        new PoseVelocity2d(
                                 new Vector2d(
                                         input.x,
                                         input.y
@@ -118,11 +121,11 @@ public class TeleopFieldCentric extends LinearOpMode {
 
                 // Set desired angular velocity to the heading controller output + angular
                 // velocity feedforward
-                double headingInput = (headingController.update(poseEstimate.rot.log())
+                double headingInput = (headingController.update(poseEstimate.heading.log())
                         * kV
                         * TRACK_WIDTH_TICKS * IN_PER_TICK);
                 drive.setDrivePowers(
-                        new Twist2d(
+                        new PoseVelocity2d(
                                 new Vector2d(
                                         input.x,
                                         input.y
@@ -137,11 +140,11 @@ public class TeleopFieldCentric extends LinearOpMode {
 
                 // Set desired angular velocity to the heading controller output + angular
                 // velocity feedforward
-                double headingInput = (headingController.update(poseEstimate.rot.log())
+                double headingInput = (headingController.update(poseEstimate.heading.log())
                         * kV)
                         * TRACK_WIDTH_TICKS;
                 drive.setDrivePowers(
-                        new Twist2d(
+                        new PoseVelocity2d(
                                 new Vector2d(
                                         input.x,
                                         input.y
@@ -181,7 +184,10 @@ public class TeleopFieldCentric extends LinearOpMode {
                 motorControl.reset();
             }
 
-            drive.updatePoseEstimateAndGetActualVel(); // this is technically private but the person who made rr says its the right way so /shrug
+
+            gamepad1.rumble(PhotonCore.CONTROL_HUB.getCurrent(CurrentUnit.AMPS),PhotonCore.EXPANSION_HUB.getCurrent(CurrentUnit.AMPS),Gamepad.RUMBLE_DURATION_CONTINUOUS);
+
+            drive.updatePoseEstimate();
             // Timing
             // measure difference between current time and previous time
             double timeDifference = (System.nanoTime() - prevTime) / 1000000.0;
@@ -193,9 +199,9 @@ public class TeleopFieldCentric extends LinearOpMode {
             FtcDashboard.getInstance().sendTelemetryPacket(packet);
 
             // Print pose to telemetry
-            telemetry.addData("x", poseEstimate.trans.x);
-            telemetry.addData("y", poseEstimate.trans.y);
-            telemetry.addData("heading", poseEstimate.rot.log());
+            telemetry.addData("x", poseEstimate.position.x);
+            telemetry.addData("y", poseEstimate.position.y);
+            telemetry.addData("heading", poseEstimate.heading.log());
             telemetry.addData("armPosition", motorControl.arm.motor.getCurrentPosition());
             telemetry.addData("armCurrent", motorControl.arm.motor.getCurrent(CurrentUnit.AMPS));
             telemetry.addData("slideTargetPosition", motorControl.slide.targetPosition);

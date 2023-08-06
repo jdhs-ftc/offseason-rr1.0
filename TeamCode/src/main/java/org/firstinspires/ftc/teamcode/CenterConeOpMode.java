@@ -1,7 +1,7 @@
 package org.firstinspires.ftc.teamcode;
 
 import com.acmerobotics.dashboard.config.Config;
-import com.acmerobotics.roadrunner.Twist2d;
+import com.acmerobotics.roadrunner.PoseVelocity2d;
 import com.acmerobotics.roadrunner.Vector2d;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
@@ -54,7 +54,7 @@ public class CenterConeOpMode extends LinearOpMode {
             // Send the output power to the motors to center the cone
             // Note: This is just an example. You would need to modify this code to control your own robot.
             //       The example assumes you have two motors with names "leftMotor" and "rightMotor".
-            drive.setDrivePowers(new Twist2d(
+            drive.setDrivePowers(new PoseVelocity2d(
                     new Vector2d(
                             0,
                             0

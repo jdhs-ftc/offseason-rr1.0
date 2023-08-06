@@ -44,10 +44,8 @@ public class RedConeDetectionPipeline extends OpenCvPipeline {
     private Mat binaryMat      = new Mat();
     private Mat maskedInputMat = new Mat();
     public Rect maxRect = new Rect();
-    private Telemetry telemetry;
 
     public void TelemetryPipeline(Telemetry telemetry) {
-        this.telemetry = telemetry;
     }
 
     @Override
