@@ -188,6 +188,7 @@ public class TeleopFieldCentric extends LinearOpMode {
             gamepad1.rumble(PhotonCore.CONTROL_HUB.getCurrent(CurrentUnit.AMPS),PhotonCore.EXPANSION_HUB.getCurrent(CurrentUnit.AMPS),Gamepad.RUMBLE_DURATION_CONTINUOUS);
 
             drive.updatePoseEstimate();
+            motorControl.update();
             // Timing
             // measure difference between current time and previous time
             double timeDifference = (System.nanoTime() - prevTime) / 1000000.0;
