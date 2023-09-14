@@ -1,0 +1,31 @@
+plugins {
+    id 'java-library'
+}
+
+java {
+    sourceCompatibility = JavaVersion.VERSION_18
+    targetCompatibility = JavaVersion.VERSION_18
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(18)
+    }
+}
+repositories {
+    maven { url = 'https://jitpack.io' }
+    maven { url = 'https://maven.brott.dev/' }
+}
+tasks.withType(JavaExec).configureEach {
+    javaLauncher.set(javaToolchains.launcherFor(java.toolchain))
+}
+gradle.taskGraph.whenReady {
+    JavaExec task = gradle.taskGraph.allTasks.find { it.name.endsWith(".main()") } // or whatever other method your Main class runs
+    if (task != null) {
+        task.setExecutable(task.javaLauncher.get().executablePath.asFile.absolutePath)
+    }
+}
+
+
+dependencies {
+    implementation 'com.github.j5155:rr-preview-via-dash:main-SNAPSHOT'
+    implementation "com.acmerobotics.roadrunner:core:1.0.0-beta2"
+    implementation "com.acmerobotics.roadrunner:actions:1.0.0-beta2"
+}

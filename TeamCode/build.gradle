@@ -14,6 +14,7 @@
 // Include common definitions from above.
 apply from: '../build.common.gradle'
 apply from: '../build.dependencies.gradle'
+apply plugin: 'org.team11260.fast-load-plugin'
 
 android {
     namespace = 'org.firstinspires.ftc.teamcode'
@@ -28,7 +29,6 @@ android {
         jniLibs.useLegacyPackaging true
     }
 }
-
 repositories {
     maven {
         url = 'https://maven.brott.dev/'
@@ -36,21 +36,38 @@ repositories {
     maven {
         url = 'https://jitpack.io'
     }
+    maven {
+       url = 'https://www.matthewo.tech/maven'
+    }
 }
 
 dependencies {
     implementation project(':FtcRobotController')
     //implementation files('/home/james/repos/ftclib-roadrunner-compat/core/build/outputs/aar/core-release.aar')
     //implementation files('/home/james/repos/ftclib-roadrunner-compat/core/vision/build/outputs/aar/vision-release.aar')
-    implementation 'org.openftc:easyopencv:1.6.0'
-    implementation 'org.openftc:apriltag:1.1.1'
+    implementation 'org.openftc:easyopencv:1.7.0'
+    implementation 'org.openftc:apriltag:2.0.0'
     annotationProcessor files('lib/OpModeAnnotationProcessor.jar')
 
-    implementation 'com.acmerobotics.dashboard:dashboard:0.4.9'
+    implementation 'com.acmerobotics.dashboard:dashboard:0.4.10'
     implementation 'com.acmerobotics.roadrunner:core:1.0.0-beta2'
     implementation 'com.acmerobotics.roadrunner:actions:1.0.0-beta2'
-    implementation 'com.github.Eeshwar-Krishnan:PhotonFTC:v2.0.4'
+    //implementation 'com.github.Eeshwar-Krishnan:PhotonFTC:v2.0.4'
 
+    implementation 'org.team11260:fast-load:0.1'
 
     implementation 'com.fasterxml.jackson.core:jackson-databind:2.12.7'
+}
+
+buildscript {
+    repositories {
+        mavenCentral()
+        maven {
+            url = 'https://www.matthewo.tech/maven'
+        }
+    }
+    dependencies {
+        classpath 'org.team11260:fast-load-plugin:0.1'
+    }
+
 }

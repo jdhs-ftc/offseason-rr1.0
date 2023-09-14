@@ -3,22 +3,20 @@ package org.firstinspires.ftc.teamcode;
 import static org.firstinspires.ftc.teamcode.MecanumDrive.*;
 import static org.firstinspires.ftc.teamcode.MecanumDrive.IN_PER_TICK;
 
-import android.provider.ContactsContract;
-
 import com.acmerobotics.dashboard.FtcDashboard;
 import com.acmerobotics.dashboard.config.Config;
-import com.acmerobotics.dashboard.telemetry.MultipleTelemetry;
 import com.acmerobotics.dashboard.telemetry.TelemetryPacket;
 import com.acmerobotics.roadrunner.Pose2d;
 import com.acmerobotics.roadrunner.PoseVelocity2d;
 import com.acmerobotics.roadrunner.Vector2d;
-import com.outoftheboxrobotics.photoncore.PhotonCore;
 import com.qualcomm.hardware.lynx.LynxModule;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.hardware.Gamepad;
 
 import org.firstinspires.ftc.robotcore.external.navigation.CurrentUnit;
+
+import java.util.List;
 
 /**
  * This opmode demonstrates how one would implement field centric control using
@@ -33,10 +31,12 @@ import org.firstinspires.ftc.robotcore.external.navigation.CurrentUnit;
 public class TeleopFieldCentric extends LinearOpMode {
 
     // Declare a PIDF Controller to regulate heading
-    private final PIDFController.PIDCoefficients HEADING_PID = new PIDFController.PIDCoefficients(0.5, 0.0, 0.0);
+    private final PIDFController.PIDCoefficients HEADING_PID = new PIDFController.PIDCoefficients(0.25, 0.0, 0.0);
     private final PIDFController headingController = new PIDFController(HEADING_PID);
     double speed;
-
+    LynxModule CONTROL_HUB;
+    LynxModule EXPANSION_HUB;
+    boolean fieldCentric = true;
 
     @Override
     public void runOpMode() throws InterruptedException {
@@ -45,9 +45,13 @@ public class TeleopFieldCentric extends LinearOpMode {
 
         // Enable Performance Optimization
         //PhotonCore.enable();
+        List<LynxModule> allHubs = hardwareMap.getAll(LynxModule.class);
 
-        PhotonCore.CONTROL_HUB.setBulkCachingMode(LynxModule.BulkCachingMode.AUTO);
-        PhotonCore.EXPANSION_HUB.setBulkCachingMode(LynxModule.BulkCachingMode.AUTO);
+        for (LynxModule module : allHubs) {
+            module.setBulkCachingMode(LynxModule.BulkCachingMode.AUTO);
+        }
+        CONTROL_HUB = allHubs.get(0);
+        EXPANSION_HUB = allHubs.get(1);
 
 
 
@@ -56,12 +60,12 @@ public class TeleopFieldCentric extends LinearOpMode {
         MecanumDrive drive = new MecanumDrive(hardwareMap, PoseStorage.currentPose);
         headingController.setInputBounds(-Math.PI, Math.PI);
 
-        // Motor Init
-        MotorControl motorControl = new MotorControl(hardwareMap);
-
         // Telemetry Init
         telemetry.setMsTransmissionInterval(50);
         //telemetry = new MultipleTelemetry(telemetry, FtcDashboard.getInstance().getTelemetry());
+
+        // Motor Init
+        MotorControl motorControl = new MotorControl(hardwareMap);
 
         waitForStart();
 
@@ -82,8 +86,14 @@ public class TeleopFieldCentric extends LinearOpMode {
                 speed = .8;
             }
 
-            if (gamepad1.dpad_down && gamepad1.dpad_left && gamepad1.dpad_up && gamepad1.dpad_right) {
-                drive.pose = new Pose2d(drive.pose.position.x, drive.pose.position.y, Math.toRadians(90.0));
+            if (gamepad1.dpad_left) {
+                drive.pose = new Pose2d(drive.pose.position.x, drive.pose.position.y, Math.toRadians(-90.0));
+            }
+            if (gamepad1.dpad_up) {
+                fieldCentric = true;
+            } else if (gamepad1.dpad_down) {
+                fieldCentric = false;
+
             }
 
             // Create a vector from the gamepad x/y inputs
@@ -93,13 +103,11 @@ public class TeleopFieldCentric extends LinearOpMode {
                     -gamepad1.left_stick_x * speed
             );
             Pose2d poseEstimate = drive.pose;
-            //double rotationAmount = input.angleCast().real - poseEstimate.rot.real + Math.toRadians(90.0);
-            double rotationAmount = -poseEstimate.heading.real + Math.toRadians(90.0);
+            double rotationAmount = -poseEstimate.heading.log() + Math.toRadians(90.0); // Rotation2d.log() makes it into a double in radians. SUPER useful, BAD name.
+            if (fieldCentric) {
+                input = new Vector2d(input.x * Math.cos(rotationAmount) - input.y * Math.sin(rotationAmount), input.x * Math.sin(rotationAmount) + input.y * Math.cos(rotationAmount));
+            }
 
-            input = new Vector2d(input.x * Math.cos(rotationAmount) - input.y * Math.sin(rotationAmount), input.x * Math.sin(rotationAmount) + input.y * Math.cos(rotationAmount));
-
-            // Pass in the rotated input + right stick value for rotation
-            // Rotation is not part of the rotated input thus must be passed in separately
             Vector2d controllerHeading = new Vector2d(-gamepad1.right_stick_y, -gamepad1.right_stick_x);
 
             if (controllerHeading.minus(new Vector2d(0.0,0.0)).norm() < 0.7) {
@@ -185,8 +193,7 @@ public class TeleopFieldCentric extends LinearOpMode {
             }
 
 
-            gamepad1.rumble(PhotonCore.CONTROL_HUB.getCurrent(CurrentUnit.AMPS),PhotonCore.EXPANSION_HUB.getCurrent(CurrentUnit.AMPS),Gamepad.RUMBLE_DURATION_CONTINUOUS);
-
+            gamepad1.rumble(CONTROL_HUB.getCurrent(CurrentUnit.AMPS),EXPANSION_HUB.getCurrent(CurrentUnit.AMPS),Gamepad.RUMBLE_DURATION_CONTINUOUS);
             drive.updatePoseEstimate();
             motorControl.update();
             // Timing

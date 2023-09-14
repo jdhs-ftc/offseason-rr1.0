@@ -22,14 +22,13 @@ public class TestAutoOpMode extends ActionOpMode {
         MecanumDrive drive = new MecanumDrive(hardwareMap, new Pose2d(0, 0, 0));
         Action traj =
                 drive.actionBuilder(drive.pose)
-                .stopAndAdd(motorControlActions.setCurrentMode(BOTTOM))
+                .stopAndAdd(motorControlActions.setCurrentMode(TOP))
                 .splineTo(new Vector2d(0, 30), Math.PI / 2)
-                .stopAndAdd(motorControlActions.arm.setMode(UP))
+                .stopAndAdd(motorControlActions.arm.setMode(MOVING_UP))
                 .splineTo(new Vector2d(0, 60), Math.PI)
-                .stopAndAdd(motorControlActions.arm.setMode(DOWN))
+                .stopAndAdd(motorControlActions.arm.setMode(MOVING_DOWN))
                 .stopAndAdd(motorControlActions.waitUntilFinished())
                 .build();
-
 
         waitForStart();
 

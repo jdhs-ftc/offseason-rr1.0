@@ -3,9 +3,6 @@ package org.firstinspires.ftc.teamcode;
 
 import androidx.annotation.NonNull;
 
-import com.acmerobotics.dashboard.canvas.Canvas;
-import com.acmerobotics.dashboard.telemetry.TelemetryPacket;
-import com.acmerobotics.roadrunner.Action;
 import com.qualcomm.robotcore.hardware.CRServo;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
@@ -172,10 +169,7 @@ public class MotorControl {
         public void armUpdate() {
             switch (mode) {
                 case UP:
-                    motor.setPower(0);
-                    break;
                 case DOWN:
-                    //noinspection DuplicateBranchesInSwitch
                     motor.setPower(0);
                     break;
                 case MOVING_UP:
